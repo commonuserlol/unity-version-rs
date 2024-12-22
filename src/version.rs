@@ -3,11 +3,11 @@ use std::fmt::{self, Display};
 use std::sync::LazyLock;
 
 use regex::Regex;
+use thiserror::Error;
 
 use crate::unity_type::UnityVersionType;
 
-static UNITY_VERSION_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)\.?([abcfpx]+)([0-9]+)").unwrap());
+static UNITY_VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)\.?([abcfpx]+)([0-9]+)").unwrap());
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct UnityVersion {
@@ -70,28 +70,33 @@ impl Ord for UnityVersion {
     }
 }
 
-impl From<&str> for UnityVersion {
-    fn from(value: &str) -> Self {
-        let caps = UNITY_VERSION_REGEX.captures(value).unwrap();
+impl TryFrom<&str> for UnityVersion {
+    type Error = UnityVersionError;
 
-        UnityVersion {
-            major: caps.get(1).unwrap().as_str().parse().unwrap(),
-            minor: caps.get(2).unwrap().as_str().parse().unwrap(),
-            build: caps.get(3).unwrap().as_str().parse().unwrap(),
-            r#type: UnityVersionType::from(caps.get(4).unwrap().as_str().chars().nth(0).unwrap()),
-            type_number: caps.get(5).unwrap().as_str().parse().unwrap(),
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let caps = UNITY_VERSION_REGEX.captures(value).ok_or(UnityVersionError::InvalidVersion)?;
+
+        macro_rules! parse {
+            ($i:expr, $err:expr) => {
+                caps.get($i).ok_or($err)?.as_str().parse().or(Err($err))?
+            };
+            ($i:expr, $char:expr, $err:expr) => {
+                UnityVersionType::from(caps.get($i).ok_or($err)?.as_str().chars().nth(0).ok_or($err)?)
+            };
         }
+
+        Ok(UnityVersion {
+            major: parse!(1, UnityVersionError::InvalidMajor),
+            minor: parse!(2, UnityVersionError::InvalidMinor),
+            build: parse!(3, UnityVersionError::InvalidBuild),
+            r#type: parse!(4, 0, UnityVersionError::InvalidType),
+            type_number: parse!(5, UnityVersionError::InvalidTypeNumber),
+        })
     }
 }
 
 impl UnityVersion {
-    pub fn new(
-        major: u16,
-        minor: u8,
-        build: u8,
-        r#type: UnityVersionType,
-        type_number: u8,
-    ) -> Self {
+    pub fn new(major: u16, minor: u8, build: u8, r#type: UnityVersionType, type_number: u8) -> Self {
         Self {
             major,
             minor,
@@ -103,11 +108,24 @@ impl UnityVersion {
 
     #[inline]
     pub fn version(&self) -> String {
-        format!(
-            "{}.{}.{}{}{}",
-            self.major, self.minor, self.build, self.r#type, self.type_number
-        )
+        format!("{}.{}.{}{}{}", self.major, self.minor, self.build, self.r#type, self.type_number)
     }
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum UnityVersionError {
+    #[error("The wrong version was specified")]
+    InvalidVersion,
+    #[error("The wrong major was specified")]
+    InvalidMajor,
+    #[error("The wrong minor was specified")]
+    InvalidMinor,
+    #[error("The wrong build was specified")]
+    InvalidBuild,
+    #[error("The wrong type was specified")]
+    InvalidType,
+    #[error("The wrong type number was specified")]
+    InvalidTypeNumber,
 }
 
 #[macro_export]
@@ -134,11 +152,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_from_str() {
+    fn parse_from_str() -> Result<(), UnityVersionError> {
         assert_eq!(
             UnityVersion::new(2020, 1, 1, UnityVersionType::Alpha, 1),
-            UnityVersion::from("2020.1.1a1")
-        )
+            UnityVersion::try_from("2020.1.1a1")?
+        );
+        assert_eq!(Err(UnityVersionError::InvalidVersion), UnityVersion::try_from("2020.1.1a"));
+
+        Ok(())
     }
 
     #[test]
@@ -146,14 +167,8 @@ mod tests {
         assert!(unity_version!(2020) < unity_version!(2021));
         assert!(unity_version!(2021) < unity_version!(2021, 1));
         assert!(unity_version!(2021, 1) < unity_version!(2021, 2, 3));
-        assert!(
-            unity_version!(2021, 2, 3, UnityVersionType::Beta)
-                < unity_version!(2021, 2, 3, UnityVersionType::Final)
-        );
-        assert!(
-            unity_version!(2021, 2, 3, UnityVersionType::Final, 1)
-                < unity_version!(2021, 2, 3, UnityVersionType::Final, 2)
-        );
+        assert!(unity_version!(2021, 2, 3, UnityVersionType::Beta) < unity_version!(2021, 2, 3, UnityVersionType::Final));
+        assert!(unity_version!(2021, 2, 3, UnityVersionType::Final, 1) < unity_version!(2021, 2, 3, UnityVersionType::Final, 2));
     }
 
     #[test]
@@ -162,10 +177,7 @@ mod tests {
         assert!(unity_version!(2020, 1) > unity_version!(2020));
         assert!(unity_version!(2020, 1, 1) > unity_version!(2020, 1));
         assert!(unity_version!(2020, 1, 1, UnityVersionType::Beta) > unity_version!(2020, 1, 1));
-        assert!(
-            unity_version!(2020, 1, 1, UnityVersionType::Beta, 1)
-                > unity_version!(2020, 1, 1, UnityVersionType::Beta)
-        );
+        assert!(unity_version!(2020, 1, 1, UnityVersionType::Beta, 1) > unity_version!(2020, 1, 1, UnityVersionType::Beta));
     }
 
     #[test]
@@ -175,9 +187,6 @@ mod tests {
 
     #[test]
     fn into_string() {
-        assert_eq!(
-            "2020.1.1x5",
-            unity_version!(2020, 1, 1, UnityVersionType::Experimental, 5).version()
-        );
+        assert_eq!("2020.1.1x5", unity_version!(2020, 1, 1, UnityVersionType::Experimental, 5).version());
     }
 }
