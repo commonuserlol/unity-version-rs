@@ -1,4 +1,7 @@
-use std::{cmp::Ordering, fmt::Display};
+use std::{
+    cmp::Ordering,
+    fmt::{Display, Formatter},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UnityVersionType {
@@ -11,8 +14,8 @@ pub enum UnityVersionType {
 }
 
 impl Display for UnityVersionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Into::<char>::into(*self))
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -32,13 +35,19 @@ impl From<char> for UnityVersionType {
 
 impl Into<char> for UnityVersionType {
     fn into(self) -> char {
+        self.as_ref().to_owned()
+    }
+}
+
+impl AsRef<char> for UnityVersionType {
+    fn as_ref(&self) -> &char {
         match self {
-            Self::Alpha => 'a',
-            Self::Beta => 'b',
-            Self::China => 'c',
-            Self::Final => 'f',
-            Self::Patch => 'p',
-            Self::Experimental => 'x',
+            Self::Alpha => &'a',
+            Self::Beta => &'b',
+            Self::China => &'c',
+            Self::Final => &'f',
+            Self::Patch => &'p',
+            Self::Experimental => &'x',
         }
     }
 }
