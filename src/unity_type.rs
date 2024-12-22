@@ -3,7 +3,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum UnityVersionType {
     #[default]
     Alpha,

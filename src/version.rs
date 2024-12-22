@@ -9,7 +9,7 @@ use crate::unity_type::UnityVersionType;
 
 static UNITY_VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)\.?([abcfpx]+)([0-9]+)").unwrap());
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnityVersion {
     /// Major release number
     pub major: u16,
