@@ -12,15 +12,15 @@ static UNITY_VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([0-
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnityVersion {
     /// Major release number
-    pub major: u16,
+    major: u16,
     /// Minor release number
-    pub minor: u8,
+    minor: u8,
     /// Build release number
-    pub build: u8,
+    build: u8,
     /// Release type
-    pub r#type: UnityVersionType,
+    ty: UnityVersionType,
     /// Release type number
-    pub type_number: u8,
+    type_number: u8,
 }
 
 impl Display for UnityVersion {
@@ -55,7 +55,7 @@ impl Ord for UnityVersion {
             return Ordering::Less;
         }
 
-        let type_cmp = self.r#type.cmp(&other.r#type);
+        let type_cmp = self.ty.cmp(&other.ty);
         if type_cmp == Ordering::Equal {
             if self.type_number > other.type_number {
                 Ordering::Greater
@@ -89,26 +89,46 @@ impl TryFrom<&str> for UnityVersion {
             major: parse!(1, UnityVersionError::InvalidMajor),
             minor: parse!(2, UnityVersionError::InvalidMinor),
             build: parse!(3, UnityVersionError::InvalidBuild),
-            r#type: parse!(4, 0, UnityVersionError::InvalidType),
+            ty: parse!(4, 0, UnityVersionError::InvalidType),
             type_number: parse!(5, UnityVersionError::InvalidTypeNumber),
         })
     }
 }
 
 impl UnityVersion {
-    pub fn new(major: u16, minor: u8, build: u8, r#type: UnityVersionType, type_number: u8) -> Self {
+    pub fn new(major: u16, minor: u8, build: u8, ty: UnityVersionType, type_number: u8) -> Self {
         Self {
             major,
             minor,
             build,
-            r#type,
+            ty,
             type_number,
         }
     }
 
     #[inline]
     pub fn version(&self) -> String {
-        format!("{}.{}.{}{}{}", self.major, self.minor, self.build, self.r#type, self.type_number)
+        format!("{}.{}.{}{}{}", self.major, self.minor, self.build, self.ty, self.type_number)
+    }
+
+    #[inline]
+    pub fn minor(&self) -> u8 {
+        self.minor
+    }
+
+    #[inline]
+    pub fn build(&self) -> u8 {
+        self.build
+    }
+
+    #[inline]
+    pub fn ty(&self) -> &UnityVersionType {
+        &self.ty
+    }
+
+    #[inline]
+    pub fn type_number(&self) -> u8 {
+        self.type_number
     }
 }
 
