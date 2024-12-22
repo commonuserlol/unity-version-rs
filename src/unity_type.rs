@@ -3,8 +3,9 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum UnityVersionType {
+    #[default]
     Alpha,
     Beta,
     China,
