@@ -3,6 +3,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
+/// Represents the type of a Unity version.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum UnityVersionType {
     #[default]

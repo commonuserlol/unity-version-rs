@@ -7,19 +7,37 @@ use thiserror::Error;
 
 use crate::unity_type::UnityVersionType;
 
+/// The regex used to parse the version.
+///
+/// Thanks to [AssetRipper.Primitives](https://github.com/AssetRipper/AssetRipper.Primitives/blob/master/AssetRipper.Primitives/UnityVersionRegexes.cs) for the regex.
 static UNITY_VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)\.?([abcfpx]+)([0-9]+)").unwrap());
 
+/// Represents a Unity version.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnityVersion {
-    /// Major release number
+    /// The major version number.
+    ///
+    /// For example, in the version `2020.2.1f1`, the major version is `2020``.
     major: u16,
-    /// Minor release number
+
+    /// The minor version number.
+    ///
+    /// For example, in the version `2020.2.1f1`, the minor version is `2`.
     minor: u8,
-    /// Build release number
+
+    /// The build version number.
+    ///
+    /// For example, in the version `2020.2.1f1`, the build version is `1`.
     build: u8,
-    /// Release type
+
+    /// The type of the version.
+    ///
+    /// For example, in the version `2020.2.1f1`, the type is [UnityVersionType::Final].
     ty: UnityVersionType,
-    /// Release type number
+
+    /// The type number of the version.
+    ///
+    /// For example, in the version `2020.2.1f1`, the type number is `1``.
     type_number: u8,
 }
 
@@ -106,48 +124,68 @@ impl UnityVersion {
         }
     }
 
+    /// Returns the version string, such as `2020.2.1f1`.
     #[inline]
     pub fn version(&self) -> String {
         format!("{}.{}.{}{}{}", self.major, self.minor, self.build, self.ty, self.type_number)
     }
 
+    /// Returns the major version number.
+    #[inline]
+    pub fn major(&self) -> u16 {
+        self.major
+    }
+
+    /// Returns the minor version number.
     #[inline]
     pub fn minor(&self) -> u8 {
         self.minor
     }
 
+    /// Returns the build version number.
     #[inline]
     pub fn build(&self) -> u8 {
         self.build
     }
 
+    /// Returns the type of the version.
     #[inline]
     pub fn ty(&self) -> &UnityVersionType {
         &self.ty
     }
 
+    /// Returns the type number of the version.
     #[inline]
     pub fn type_number(&self) -> u8 {
         self.type_number
     }
 }
 
+/// The error type for [UnityVersion].
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum UnityVersionError {
+    /// The regex used to parse the version failed.
     #[error("The wrong version was specified")]
     InvalidVersion,
+    /// The regex used to parse the version or parse the number failed.
     #[error("The wrong major was specified")]
     InvalidMajor,
+    /// The regex used to parse the version or parse the number failed.
     #[error("The wrong minor was specified")]
+    /// The regex used to parse the version or parse the number failed.
     InvalidMinor,
     #[error("The wrong build was specified")]
+    /// The regex used to parse the version or parse the number failed.
     InvalidBuild,
+    /// The build type contains an invalid character.
     #[error("The wrong type was specified")]
     InvalidType,
+    /// The regex used to parse the version or parse the number failed.
     #[error("The wrong type number was specified")]
     InvalidTypeNumber,
 }
 
+/// A macro to quickly create a [UnityVersion].
 #[macro_export]
 macro_rules! unity_version {
     ($major: expr, $minor: expr, $build: expr, $type: expr, $type_number: expr) => {
@@ -174,10 +212,30 @@ mod tests {
     #[test]
     fn parse_from_str() -> Result<(), UnityVersionError> {
         assert_eq!(
-            UnityVersion::new(2020, 1, 1, UnityVersionType::Alpha, 1),
-            UnityVersion::try_from("2020.1.1a1")?
+            UnityVersion::try_from("2020.2.1f1"),
+            Ok(UnityVersion::new(2020, 2, 1, UnityVersionType::Final, 1))
         );
-        assert_eq!(Err(UnityVersionError::InvalidVersion), UnityVersion::try_from("2020.1.1a"));
+        assert_eq!(
+            UnityVersion::try_from("2019.4.10b5"),
+            Ok(UnityVersion::new(2019, 4, 10, UnityVersionType::Beta, 5))
+        );
+        assert_eq!(
+            UnityVersion::try_from("2021.1.0a3"),
+            Ok(UnityVersion::new(2021, 1, 0, UnityVersionType::Alpha, 3))
+        );
+        assert_eq!(
+            UnityVersion::try_from("2018.3.12p2"),
+            Ok(UnityVersion::new(2018, 3, 12, UnityVersionType::Patch, 2))
+        );
+        assert_eq!(
+            UnityVersion::try_from("2017.2.0c0"),
+            Ok(UnityVersion::new(2017, 2, 0, UnityVersionType::China, 0))
+        );
+        assert_eq!(
+            UnityVersion::try_from("2022.5.1x10"),
+            Ok(UnityVersion::new(2022, 5, 1, UnityVersionType::Experimental, 10))
+        );
+        assert_eq!(UnityVersion::try_from("invalid.version.string"), Err(UnityVersionError::InvalidVersion));
 
         Ok(())
     }
@@ -203,10 +261,19 @@ mod tests {
     #[test]
     fn should_be_equal() {
         assert!(unity_version!(2020) == unity_version!(2020));
+        assert!(unity_version!(2020, 1) == unity_version!(2020, 1));
+        assert!(unity_version!(2020, 1, 1) == unity_version!(2020, 1, 1));
+        assert!(unity_version!(2020, 1, 1, UnityVersionType::Beta) == unity_version!(2020, 1, 1, UnityVersionType::Beta));
+        assert!(unity_version!(2020, 1, 1, UnityVersionType::Beta, 1) == unity_version!(2020, 1, 1, UnityVersionType::Beta, 1));
     }
 
     #[test]
     fn into_string() {
-        assert_eq!("2020.1.1x5", unity_version!(2020, 1, 1, UnityVersionType::Experimental, 5).version());
+        assert_eq!("2020.1.1a1", unity_version!(2020, 1, 1, UnityVersionType::Alpha, 1).version());
+        assert_eq!("2020.1.1b2", unity_version!(2020, 1, 1, UnityVersionType::Beta, 2).version());
+        assert_eq!("2020.1.1c3", unity_version!(2020, 1, 1, UnityVersionType::China, 3).version());
+        assert_eq!("2020.1.1f4", unity_version!(2020, 1, 1, UnityVersionType::Final, 4).version());
+        assert_eq!("2020.1.1p5", unity_version!(2020, 1, 1, UnityVersionType::Patch, 5).version());
+        assert_eq!("2020.1.1x6", unity_version!(2020, 1, 1, UnityVersionType::Experimental, 6).version());
     }
 }
