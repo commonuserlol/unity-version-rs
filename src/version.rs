@@ -81,7 +81,7 @@ impl TryFrom<&str> for UnityVersion {
                 caps.get($i).ok_or($err)?.as_str().parse().or(Err($err))?
             };
             ($i:expr, $char:expr, $err:expr) => {
-                UnityVersionType::from(caps.get($i).ok_or($err)?.as_str().chars().nth(0).ok_or($err)?)
+                UnityVersionType::try_from(caps.get($i).ok_or($err)?.as_str().chars().nth(0).ok_or($err)?).or(Err($err))?
             };
         }
 

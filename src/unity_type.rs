@@ -20,16 +20,18 @@ impl Display for UnityVersionType {
     }
 }
 
-impl From<char> for UnityVersionType {
-    fn from(value: char) -> Self {
+impl TryFrom<char> for UnityVersionType {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'a' => Self::Alpha,
-            'b' => Self::Beta,
-            'c' => Self::China,
-            'f' => Self::Final,
-            'p' => Self::Patch,
-            'x' => Self::Experimental,
-            _ => unreachable!(),
+            'a' => Ok(Self::Alpha),
+            'b' => Ok(Self::Beta),
+            'c' => Ok(Self::China),
+            'f' => Ok(Self::Final),
+            'p' => Ok(Self::Patch),
+            'x' => Ok(Self::Experimental),
+            _ => Err(()),
         }
     }
 }
@@ -118,12 +120,13 @@ mod tests {
 
     #[test]
     fn from_char() {
-        assert_eq!(UnityVersionType::Alpha, UnityVersionType::from('a'));
-        assert_eq!(UnityVersionType::Beta, UnityVersionType::from('b'));
-        assert_eq!(UnityVersionType::China, UnityVersionType::from('c'));
-        assert_eq!(UnityVersionType::Final, UnityVersionType::from('f'));
-        assert_eq!(UnityVersionType::Patch, UnityVersionType::from('p'));
-        assert_eq!(UnityVersionType::Experimental, UnityVersionType::from('x'));
+        assert_eq!(Ok(UnityVersionType::Alpha), UnityVersionType::try_from('a'));
+        assert_eq!(Ok(UnityVersionType::Beta), UnityVersionType::try_from('b'));
+        assert_eq!(Ok(UnityVersionType::China), UnityVersionType::try_from('c'));
+        assert_eq!(Ok(UnityVersionType::Final), UnityVersionType::try_from('f'));
+        assert_eq!(Ok(UnityVersionType::Patch), UnityVersionType::try_from('p'));
+        assert_eq!(Ok(UnityVersionType::Experimental), UnityVersionType::try_from('x'));
+        assert_eq!(Err(()), UnityVersionType::try_from('y'));
     }
 
     #[test]
